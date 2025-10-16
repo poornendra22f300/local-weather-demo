@@ -1,25 +1,21 @@
-# Simple Weather (Open‑Meteo)
+# Weather Dashboard + 3-Day Forecast
 
 ## Overview
-A minimal single-page app that fetches the current temperature and humidity for a city using the Open‑Meteo Geocoding and Forecast APIs. Styled with Bootstrap 5 for a clean, responsive UI.
+Lightweight weather dashboard that shows current weather and a 3-day forecast. Includes a Celsius/Fahrenheit toggle and small weather icons, with a clean, consistent UI.
 
 ## Setup
-- No build tools required.
-- Open `index.html` in any modern browser with internet access.
+- Get a free API key from OpenWeatherMap.
+- Open index.html in a browser.
+- Paste your API key in the field at the top.
+
+No build tools required.
 
 ## Usage
-- Enter a city name (e.g., “Berlin”, “New York”).
-- Click “Get Weather”.
-- The page displays current temperature (°C) and relative humidity (%).
-- If multiple places match, the first result is used.
+- Enter a city (e.g., "Berlin") and click Get Weather.
+- Toggle °C/°F to switch units; current and forecast temps update instantly.
+- Icons and descriptions come from OpenWeatherMap.
 
-## License
-MIT License
-
-Copyright (c) 2025
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+## Improvements in Round 2
+- Added a 3-day forecast section (table) below current weather.
+- Added a global Celsius/Fahrenheit toggle affecting all temperatures.
+- Displayed small weather icons for both current and forecast.
