@@ -1,175 +1,536 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Simple Weather - Open-Meteo</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Fetch current temperature and humidity for any city using the Open-Meteo API.">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather Dashboard + 3-Day Forecast</title>
   <style>
-    body { background: #f8f9fa; }
-    .result-card { display: none; }
+    :root{
+      --bg:#0f172a;
+      --card:#111827;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --accent:#38bdf8;
+      --accent-2:#60a5fa;
+      --danger:#ef4444;
+      --ok:#34d399;
+      --border:#1f2937;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+      background:linear-gradient(145deg,#0b1223,#0f172a 40%,#0b1326);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:24px;
+    }
+    .app{
+      width:100%;
+      max-width:980px;
+      background:rgba(17,24,39,.7);
+      border:1px solid var(--border);
+      border-radius:14px;
+      backdrop-filter: blur(6px);
+      box-shadow:0 10px 40px rgba(0,0,0,.45);
+      overflow:hidden;
+    }
+    header{
+      padding:18px 20px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      background:linear-gradient(180deg, rgba(56,189,248,.08), transparent 60%);
+    }
+    h1{
+      margin:0;
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:.3px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .brand-dot{
+      width:8px;height:8px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      box-shadow:0 0 14px rgba(56,189,248,.8);
+    }
+
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+    .input, .button, .key{
+      height:38px;
+      border-radius:9px;
+      border:1px solid var(--border);
+      background:#0b1220;
+      color:var(--text);
+      padding:0 12px;
+      font-size:14px;
+      outline:none;
+    }
+    .input::placeholder, .key::placeholder{color:var(--muted)}
+    .button{
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      border:none;
+      color:#00111a;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .05s ease, filter .15s ease;
+    }
+    .button:active{transform:translateY(1px)}
+    .button:disabled{
+      filter:grayscale(.7) brightness(.7);
+      cursor:not-allowed;
+    }
+
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#0b1220;
+      height:38px;
+    }
+    .switch{
+      --w:46px; --h:24px;
+      width:var(--w); height:var(--h);
+      background:#101827;
+      border:1px solid var(--border);
+      border-radius:999px;
+      position:relative;
+      cursor:pointer;
+    }
+    .switch input{display:none}
+    .knob{
+      position:absolute; top:2px; left:2px;
+      width:20px; height:20px; border-radius:50%;
+      background:linear-gradient(135deg,#f8fafc,#cbd5e1);
+      transition:left .18s ease;
+      box-shadow:0 2px 6px rgba(0,0,0,.4);
+    }
+    .switch input:checked + .knob{ left:24px }
+
+    main{ padding:18px; }
+    .status{ font-size:13px; color:var(--muted); margin-bottom:12px; min-height:18px}
+    .error{ color:var(--danger); }
+    .ok{ color:var(--ok); }
+
+    .cards{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:16px;
+    }
+    @media (max-width:860px){
+      .cards{ grid-template-columns:1fr; }
+    }
+
+    .card{
+      background:rgba(10,14,24,.6);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:16px;
+    }
+    .section-title{
+      margin:0 0 12px;
+      font-size:14px;
+      color:var(--muted);
+      letter-spacing:.4px;
+      text-transform:uppercase;
+    }
+
+    .current{
+      display:flex; gap:16px; align-items:center;
+    }
+    .current .icon{
+      width:84px; height:84px; flex:0 0 auto;
+      image-rendering: -webkit-optimize-contrast;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,.35));
+    }
+    .current .primary{
+      display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;
+    }
+    .temp{
+      font-size:46px; font-weight:800;
+      letter-spacing:-1px;
+      line-height:1;
+      background:linear-gradient(135deg,#e8f3ff,#aad4ff);
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      text-shadow:0 4px 30px rgba(96,165,250,.14);
+    }
+    .unit{ font-size:16px; color:var(--muted) }
+    .desc{ font-size:14px; color:#d1d5db; text-transform:capitalize }
+    .meta{
+      margin-top:8px; display:flex; gap:18px; flex-wrap:wrap; color:#cbd5e1; font-size:13px;
+    }
+    .meta div{ display:flex; gap:6px; align-items:center }
+    .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent) }
+
+    /* Forecast table */
+    .forecast-wrap{
+      overflow:auto; /* in case small screens */
+    }
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      overflow:hidden;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:rgba(9,12,22,.5);
+    }
+    thead th{
+      text-align:left;
+      font-size:12px;
+      color:var(--muted);
+      padding:10px 12px;
+      background:rgba(56,189,248,.06);
+      border-bottom:1px solid var(--border);
+      letter-spacing:.3px;
+    }
+    tbody td{
+      padding:12px;
+      border-bottom:1px solid var(--border);
+      font-size:14px;
+      color:#e5e7eb;
+      vertical-align:middle;
+    }
+    tbody tr:last-child td{ border-bottom:none }
+    .mini{
+      width:44px; height:44px;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,.35));
+    }
+    .muted{ color:var(--muted) }
+    .right{ text-align:right }
+    .center{ text-align:center }
+    .footnote{
+      margin-top:10px; font-size:12px; color:var(--muted);
+    }
+    .flex{
+      display:flex; align-items:center; gap:8px;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background:#0d1628; border:1px solid var(--border); border-radius:6px; padding:3px 6px; color:#cbd5e1; font-size:12px;
+    }
   </style>
 </head>
 <body>
-  <div class="container py-5">
-    <h1 class="mb-4">Current Weather</h1>
-
-    <form id="weatherForm" class="mb-3" autocomplete="off" novalidate>
-      <div class="row g-2">
-        <div class="col-md-8">
-          <label for="cityInput" class="form-label">City Name</label>
-          <input type="text" id="cityInput" class="form-control" placeholder="e.g., London, Tokyo, New York" required>
-          <div class="form-text">Enter a city name. The first match will be used.</div>
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <button type="submit" id="fetchBtn" class="btn btn-primary w-100">
-            Get Weather
-          </button>
+  <div class="app">
+    <header>
+      <h1><span class="brand-dot"></span> Weather Dashboard</h1>
+      <div class="controls">
+        <input id="apiKey" class="key" type="password" placeholder="OpenWeatherMap API Key"/>
+        <input id="cityInput" class="input" type="text" placeholder="Enter city (e.g., Paris)"/>
+        <button id="getWeatherBtn" class="button">Get Weather</button>
+        <div class="toggle" title="Toggle temperature units">
+          <span class="muted">°C</span>
+          <label class="switch">
+            <input id="unitToggle" type="checkbox" aria-label="Toggle Fahrenheit"/>
+            <span class="knob"></span>
+          </label>
+          <span class="muted">°F</span>
         </div>
       </div>
-    </form>
+    </header>
+    <main>
+      <div id="status" class="status"></div>
 
-    <div id="alertBox" class="alert alert-danger d-none" role="alert"></div>
+      <div class="cards">
+        <section class="card">
+          <h3 class="section-title">Current Weather</h3>
+          <div id="current" class="current">
+            <div class="muted">Enter a city and click "Get Weather".</div>
+          </div>
+        </section>
 
-    <div id="resultCard" class="card shadow-sm result-card">
-      <div class="card-body">
-        <h5 class="card-title" id="placeTitle">City</h5>
-        <p class="card-subtitle text-muted mb-3" id="coords"></p>
-        <div class="row">
-          <div class="col-sm-6 mb-3">
-            <div class="p-3 border rounded bg-light">
-              <div class="small text-uppercase text-muted">Temperature</div>
-              <div class="fs-3 fw-semibold" id="tempValue">--</div>
-            </div>
+        <section class="card">
+          <h3 class="section-title">3-Day Forecast</h3>
+          <div class="forecast-wrap">
+            <table aria-label="3-Day Forecast">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th class="center">Icon</th>
+                  <th>Description</th>
+                  <th class="right">Min</th>
+                  <th class="right">Max</th>
+                </tr>
+              </thead>
+              <tbody id="forecastBody">
+                <tr><td colspan="5" class="muted">Forecast will appear here.</td></tr>
+              </tbody>
+            </table>
           </div>
-          <div class="col-sm-6 mb-3">
-            <div class="p-3 border rounded bg-light">
-              <div class="small text-uppercase text-muted">Humidity</div>
-              <div class="fs-3 fw-semibold" id="humidityValue">--</div>
-            </div>
-          </div>
-        </div>
-        <p class="text-muted small mb-0" id="updatedAt"></p>
+          <div class="footnote">Icons from OpenWeatherMap.</div>
+        </section>
       </div>
-    </div>
-
-    <p class="mt-4 text-muted small">
-      Data by Open‑Meteo. This demo uses the Open‑Meteo Geocoding and Forecast APIs.
-    </p>
+    </main>
   </div>
 
   <script>
-    const form = document.getElementById('weatherForm');
-    const cityInput = document.getElementById('cityInput');
-    const fetchBtn = document.getElementById('fetchBtn');
-    const alertBox = document.getElementById('alertBox');
-    const resultCard = document.getElementById('resultCard');
-    const placeTitle = document.getElementById('placeTitle');
-    const coordsEl = document.getElementById('coords');
-    const tempValue = document.getElementById('tempValue');
-    const humidityValue = document.getElementById('humidityValue');
-    const updatedAt = document.getElementById('updatedAt');
+    // State
+    const state = {
+      baseUnit: 'C', // all fetched as metric (C)
+      displayUnit: 'C',
+      current: null,
+      forecastDays: [], // array of { dateKey, dow, minC, maxC, icon, desc }
+    };
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      hideAlert();
-      hideResult();
+    // Elements
+    const el = {
+      apiKey: document.getElementById('apiKey'),
+      cityInput: document.getElementById('cityInput'),
+      getBtn: document.getElementById('getWeatherBtn'),
+      unitToggle: document.getElementById('unitToggle'),
+      status: document.getElementById('status'),
+      current: document.getElementById('current'),
+      forecastBody: document.getElementById('forecastBody'),
+    };
 
-      const query = cityInput.value.trim();
-      if (!query) {
-        showAlert('Please enter a city name.');
+    // Utilities
+    const toF = c => (c * 9/5) + 32;
+    const round1 = n => Math.round(n * 10) / 10;
+    const windToDisplay = (ms, unit) => {
+      if (unit === 'F') return `${round1(ms * 2.23694)} mph`;
+      return `${round1(ms)} m/s`;
+    };
+    const tempToDisplay = (c, unit) => {
+      const v = unit === 'F' ? toF(c) : c;
+      return `${Math.round(v)}°${unit}`;
+    };
+    const iconUrl = code => `https://openweathermap.org/img/wn/${code}@2x.png`;
+    const formatDateKeyFromOffset = (dtUTCsec, tzShiftSec) => {
+      const d = new Date((dtUTCsec + tzShiftSec) * 1000);
+      // Using UTC getters after shifting to local time
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth()+1).padStart(2,'0');
+      const day = String(d.getUTCDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    };
+    const dayOfWeekFromDateKey = (dateKey) => {
+      const [y, m, d] = dateKey.split('-').map(Number);
+      // Create date in local time; only used for label
+      const dt = new Date(y, m-1, d);
+      return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+
+    function setStatus(msg, type='info'){
+      el.status.textContent = msg || '';
+      el.status.className = 'status ' + (type === 'error' ? 'error' : (type === 'ok' ? 'ok' : ''));
+    }
+
+    function savePrefs(){
+      localStorage.setItem('owmApiKey', el.apiKey.value.trim());
+      localStorage.setItem('lastCity', el.cityInput.value.trim());
+      localStorage.setItem('unit', state.displayUnit);
+    }
+
+    function loadPrefs(){
+      const key = localStorage.getItem('owmApiKey') || '';
+      const city = localStorage.getItem('lastCity') || '';
+      const unit = localStorage.getItem('unit') || 'C';
+      el.apiKey.value = key;
+      el.cityInput.value = city;
+      el.unitToggle.checked = (unit === 'F');
+      state.displayUnit = unit;
+    }
+
+    async function fetchWeather(city, apiKey){
+      const q = encodeURIComponent(city);
+      const base = 'https://api.openweathermap.org/data/2.5';
+      const currentUrl = `${base}/weather?q=${q}&appid=${apiKey}&units=metric`;
+      const forecastUrl = `${base}/forecast?q=${q}&appid=${apiKey}&units=metric`;
+
+      setStatus('Fetching weather...', 'info');
+      el.getBtn.disabled = true;
+
+      try {
+        const [curRes, foreRes] = await Promise.all([
+          fetch(currentUrl),
+          fetch(forecastUrl)
+        ]);
+        if(!curRes.ok){
+          const t = await curRes.json().catch(()=>({message: curRes.statusText}));
+          throw new Error(t.message || 'Failed to fetch current weather');
+        }
+        if(!foreRes.ok){
+          const t = await foreRes.json().catch(()=>({message: foreRes.statusText}));
+          throw new Error(t.message || 'Failed to fetch forecast');
+        }
+        const current = await curRes.json();
+        const forecast = await foreRes.json();
+
+        state.current = {
+          name: `${current.name}${current.sys?.country ? ', ' + current.sys.country : ''}`,
+          tempC: current.main.temp,
+          desc: current.weather?.[0]?.description || '',
+          icon: current.weather?.[0]?.icon || '01d',
+          humidity: current.main.humidity,
+          windMs: current.wind?.speed ?? 0,
+          tzShift: current.timezone ?? 0,
+          dt: current.dt
+        };
+
+        // Build 3-day forecast from 3-hourly items
+        const todayKey = formatDateKeyFromOffset(state.current.dt, state.current.tzShift);
+        const groups = new Map(); // dateKey -> { items: [] }
+        for(const it of forecast.list){
+          if(!it.dt_txt) continue;
+          const dateKey = it.dt_txt.slice(0,10); // 'YYYY-MM-DD' (city local time in response)
+          if(!groups.has(dateKey)) groups.set(dateKey, []);
+          groups.get(dateKey).push(it);
+        }
+        // Collect next 3 days excluding today's date in the city
+        const dayKeys = Array.from(groups.keys()).filter(k => k !== todayKey).sort();
+        const next3 = dayKeys.slice(0,3);
+        const daily = [];
+        for(const dk of next3){
+          const items = groups.get(dk);
+          if(!items || !items.length) continue;
+
+          // min/max in C
+          let minC = Number.POSITIVE_INFINITY;
+          let maxC = Number.NEGATIVE_INFINITY;
+          items.forEach(it=>{
+            const lo = it.main?.temp_min;
+            const hi = it.main?.temp_max;
+            if(typeof lo === 'number') minC = Math.min(minC, lo);
+            if(typeof hi === 'number') maxC = Math.max(maxC, hi);
+          });
+          if(!isFinite(minC) || !isFinite(maxC)){
+            // Fallback to average temp if missing min/max
+            const temps = items.map(it=>it.main?.temp).filter(t=>typeof t==='number');
+            if(temps.length){
+              const avg = temps.reduce((a,b)=>a+b,0)/temps.length;
+              minC = Math.min(...temps, avg);
+              maxC = Math.max(...temps, avg);
+            } else {
+              minC = maxC = 0;
+            }
+          }
+          // pick an icon and description near midday if possible
+          let pick = items.find(it => it.dt_txt.includes('12:00:00')) || items[Math.floor(items.length/2)];
+          const icon = pick?.weather?.[0]?.icon || '01d';
+          const desc = pick?.weather?.[0]?.description || '—';
+
+          daily.push({
+            dateKey: dk,
+            dow: dayOfWeekFromDateKey(dk),
+            minC, maxC, icon, desc
+          });
+        }
+        state.forecastDays = daily;
+
+        render();
+        setStatus(`Showing weather for ${state.current.name}`, 'ok');
+      } catch(err){
+        console.error(err);
+        setStatus(err.message || 'Something went wrong', 'error');
+        // Clear views
+        el.current.innerHTML = `<div class="muted">${(err && err.message) ? err.message : 'Unable to load data.'}</div>`;
+        el.forecastBody.innerHTML = `<tr><td colspan="5" class="muted">No forecast available.</td></tr>`;
+      } finally {
+        el.getBtn.disabled = false;
+      }
+    }
+
+    function render(){
+      renderCurrent();
+      renderForecast();
+    }
+
+    function renderCurrent(){
+      if(!state.current){
+        el.current.innerHTML = `<div class="muted">Enter a city and click "Get Weather".</div>`;
         return;
       }
+      const u = state.displayUnit;
+      const c = state.current;
+      const temp = tempToDisplay(c.tempC, u);
+      const wind = windToDisplay(c.windMs, u);
 
-      setLoading(true);
-      try {
-        const place = await geocodeCity(query);
-        if (!place) {
-          throw new Error('No matching city found.');
-        }
-        const weather = await fetchWeather(place.latitude, place.longitude);
+      el.current.innerHTML = `
+        <img class="icon" src="${iconUrl(c.icon)}" alt="${c.desc}">
+        <div>
+          <div class="primary">
+            <div class="temp">${temp}</div>
+            <div class="unit">${c.name}</div>
+          </div>
+          <div class="desc">${c.desc}</div>
+          <div class="meta">
+            <div class="flex"><span class="dot"></span><span>Humidity: ${c.humidity}%</span></div>
+            <div class="flex"><span class="dot"></span><span>Wind: ${wind}</span></div>
+          </div>
+        </div>
+      `;
+    }
 
-        // Update UI
-        const locationLabel = formatPlace(place);
-        placeTitle.textContent = locationLabel;
-        coordsEl.textContent = `Lat ${place.latitude.toFixed(3)}, Lon ${place.longitude.toFixed(3)}`;
-
-        const t = weather?.current?.temperature_2m;
-        const h = weather?.current?.relative_humidity_2m;
-        tempValue.textContent = (typeof t === 'number') ? `${t.toFixed(1)} °C` : 'N/A';
-        humidityValue.textContent = (typeof h === 'number') ? `${h} %` : 'N/A';
-
-        const timeStr = weather?.current?.time;
-        updatedAt.textContent = timeStr ? `Updated: ${new Date(timeStr).toLocaleString()}` : '';
-
-        showResult();
-      } catch (err) {
-        console.error(err);
-        showAlert(err.message || 'Something went wrong. Please try again.');
-      } finally {
-        setLoading(false);
+    function renderForecast(){
+      const u = state.displayUnit;
+      const days = state.forecastDays || [];
+      if(!days.length){
+        el.forecastBody.innerHTML = `<tr><td colspan="5" class="muted">No forecast yet. Search a city.</td></tr>`;
+        return;
       }
+      const rows = days.slice(0,3).map(d=>{
+        const min = tempToDisplay(d.minC, u);
+        const max = tempToDisplay(d.maxC, u);
+        return `
+          <tr>
+            <td>${d.dow}</td>
+            <td class="center"><img class="mini" src="${iconUrl(d.icon)}" alt="${d.desc}"></td>
+            <td class="muted" style="text-transform:capitalize">${d.desc}</td>
+            <td class="right">${min}</td>
+            <td class="right">${max}</td>
+          </tr>
+        `;
+      }).join('');
+      el.forecastBody.innerHTML = rows;
+    }
+
+    // Event handlers
+    el.getBtn.addEventListener('click', () => {
+      const key = el.apiKey.value.trim();
+      const city = el.cityInput.value.trim();
+      if(!key){ setStatus('Please enter your OpenWeatherMap API key.', 'error'); el.apiKey.focus(); return; }
+      if(!city){ setStatus('Please enter a city.', 'error'); el.cityInput.focus(); return; }
+      savePrefs();
+      fetchWeather(city, key);
     });
 
-    function setLoading(isLoading) {
-      fetchBtn.disabled = isLoading;
-      if (isLoading) {
-        fetchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Fetching...';
-      } else {
-        fetchBtn.textContent = 'Get Weather';
-      }
-    }
+    el.unitToggle.addEventListener('change', () => {
+      state.displayUnit = el.unitToggle.checked ? 'F' : 'C';
+      savePrefs();
+      render();
+    });
 
-    function showAlert(message) {
-      alertBox.textContent = message;
-      alertBox.classList.remove('d-none');
-    }
-    function hideAlert() {
-      alertBox.classList.add('d-none');
-      alertBox.textContent = '';
-    }
-    function showResult() {
-      resultCard.style.display = 'block';
-    }
-    function hideResult() {
-      resultCard.style.display = 'none';
-    }
+    // Keyboard: Enter to search
+    el.cityInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') el.getBtn.click();
+    });
+    el.apiKey.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') el.getBtn.click();
+    });
 
-    function formatPlace(p) {
-      const parts = [p.name];
-      if (p.admin1 && p.admin1 !== p.name) parts.push(p.admin1);
-      if (p.country_code) parts.push(p.country_code);
-      else if (p.country) parts.push(p.country);
-      return parts.filter(Boolean).join(', ');
-    }
-
-    async function geocodeCity(name) {
-      const params = new URLSearchParams({
-        name,
-        count: '1',
-        language: 'en',
-        format: 'json'
-      });
-      const url = `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Geocoding failed. Try again later.');
-      const data = await res.json();
-      if (!data.results || data.results.length === 0) return null;
-      return data.results[0];
-    }
-
-    async function fetchWeather(lat, lon) {
-      const params = new URLSearchParams({
-        latitude: String(lat),
-        longitude: String(lon),
-        current: 'temperature_2m,relative_humidity_2m',
-        timezone: 'auto'
-      });
-      const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Weather fetch failed. Try again later.');
-      return res.json();
+    // Init
+    loadPrefs();
+    // Auto-load last if available
+    if(el.apiKey.value && el.cityInput.value){
+      fetchWeather(el.cityInput.value.trim(), el.apiKey.value.trim());
+    } else {
+      setStatus('Tip: store your API key for one-click weather lookups.', 'info');
     }
   </script>
 </body>
