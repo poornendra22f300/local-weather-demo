@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Simple Weather - Open-Meteo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Fetch current temperature and humidity for any city using the Open-Meteo API.">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; }
+    .result-card { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <h1 class="mb-4">Current Weather</h1>
+
+    <form id="weatherForm" class="mb-3" autocomplete="off" novalidate>
+      <div class="row g-2">
+        <div class="col-md-8">
+          <label for="cityInput" class="form-label">City Name</label>
+          <input type="text" id="cityInput" class="form-control" placeholder="e.g., London, Tokyo, New York" required>
+          <div class="form-text">Enter a city name. The first match will be used.</div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <button type="submit" id="fetchBtn" class="btn btn-primary w-100">
+            Get Weather
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div id="alertBox" class="alert alert-danger d-none" role="alert"></div>
+
+    <div id="resultCard" class="card shadow-sm result-card">
+      <div class="card-body">
+        <h5 class="card-title" id="placeTitle">City</h5>
+        <p class="card-subtitle text-muted mb-3" id="coords"></p>
+        <div class="row">
+          <div class="col-sm-6 mb-3">
+            <div class="p-3 border rounded bg-light">
+              <div class="small text-uppercase text-muted">Temperature</div>
+              <div class="fs-3 fw-semibold" id="tempValue">--</div>
+            </div>
+          </div>
+          <div class="col-sm-6 mb-3">
+            <div class="p-3 border rounded bg-light">
+              <div class="small text-uppercase text-muted">Humidity</div>
+              <div class="fs-3 fw-semibold" id="humidityValue">--</div>
+            </div>
+          </div>
+        </div>
+        <p class="text-muted small mb-0" id="updatedAt"></p>
+      </div>
+    </div>
+
+    <p class="mt-4 text-muted small">
+      Data by Open‑Meteo. This demo uses the Open‑Meteo Geocoding and Forecast APIs.
+    </p>
+  </div>
+
+  <script>
+    const form = document.getElementById('weatherForm');
+    const cityInput = document.getElementById('cityInput');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const alertBox = document.getElementById('alertBox');
+    const resultCard = document.getElementById('resultCard');
+    const placeTitle = document.getElementById('placeTitle');
+    const coordsEl = document.getElementById('coords');
+    const tempValue = document.getElementById('tempValue');
+    const humidityValue = document.getElementById('humidityValue');
+    const updatedAt = document.getElementById('updatedAt');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAlert();
+      hideResult();
+
+      const query = cityInput.value.trim();
+      if (!query) {
+        showAlert('Please enter a city name.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const place = await geocodeCity(query);
+        if (!place) {
+          throw new Error('No matching city found.');
+        }
+        const weather = await fetchWeather(place.latitude, place.longitude);
+
+        // Update UI
+        const locationLabel = formatPlace(place);
+        placeTitle.textContent = locationLabel;
+        coordsEl.textContent = `Lat ${place.latitude.toFixed(3)}, Lon ${place.longitude.toFixed(3)}`;
+
+        const t = weather?.current?.temperature_2m;
+        const h = weather?.current?.relative_humidity_2m;
+        tempValue.textContent = (typeof t === 'number') ? `${t.toFixed(1)} °C` : 'N/A';
+        humidityValue.textContent = (typeof h === 'number') ? `${h} %` : 'N/A';
+
+        const timeStr = weather?.current?.time;
+        updatedAt.textContent = timeStr ? `Updated: ${new Date(timeStr).toLocaleString()}` : '';
+
+        showResult();
+      } catch (err) {
+        console.error(err);
+        showAlert(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    function setLoading(isLoading) {
+      fetchBtn.disabled = isLoading;
+      if (isLoading) {
+        fetchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Fetching...';
+      } else {
+        fetchBtn.textContent = 'Get Weather';
+      }
+    }
+
+    function showAlert(message) {
+      alertBox.textContent = message;
+      alertBox.classList.remove('d-none');
+    }
+    function hideAlert() {
+      alertBox.classList.add('d-none');
+      alertBox.textContent = '';
+    }
+    function showResult() {
+      resultCard.style.display = 'block';
+    }
+    function hideResult() {
+      resultCard.style.display = 'none';
+    }
+
+    function formatPlace(p) {
+      const parts = [p.name];
+      if (p.admin1 && p.admin1 !== p.name) parts.push(p.admin1);
+      if (p.country_code) parts.push(p.country_code);
+      else if (p.country) parts.push(p.country);
+      return parts.filter(Boolean).join(', ');
+    }
+
+    async function geocodeCity(name) {
+      const params = new URLSearchParams({
+        name,
+        count: '1',
+        language: 'en',
+        format: 'json'
+      });
+      const url = `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Geocoding failed. Try again later.');
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) return null;
+      return data.results[0];
+    }
+
+    async function fetchWeather(lat, lon) {
+      const params = new URLSearchParams({
+        latitude: String(lat),
+        longitude: String(lon),
+        current: 'temperature_2m,relative_humidity_2m',
+        timezone: 'auto'
+      });
+      const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Weather fetch failed. Try again later.');
+      return res.json();
+    }
+  </script>
+</body>
+</html>
